@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\BookResource;
 use App\Models\Book;
 use Illuminate\Http\Request;
 
@@ -11,11 +12,32 @@ class BookController extends Controller
 
     public function index(Request $request)
     {
-        $book = Book::all();
-        return response()->json([
-            'message' => 'Book index',
-            'book' => $book
-        ]);
+        $search = $request->query('search');
+        $sort = $request->query('sort');
+        $order = $request->query('order');
+
+        $allowedSort = ['id', 'title', 'author', 'price', 'stock'];
+
+        if (!in_array($sort, $allowedSort)) {
+            $sort = 'id';
+        }
+
+        if (!in_array($order, ['asc', 'desc'])) {
+            $order = 'desc';
+        }
+        $query = Book::orderBy($sort, $order);
+
+        if ($search) {
+            $query = $query->where("title", "like", "%" . $search . "%");
+        }
+
+        $book = $query->paginate(10);
+
+        return BookResource::collection($book)->additional(
+            [
+                'message' => 'book retrieved successfully',
+            ]
+        )->response()->setStatusCode(200);
     }
 
     public function search($id)
@@ -23,13 +45,14 @@ class BookController extends Controller
         $book = Book::find($id);
         if (!$book) {
             return response()->json([
-                'message' => 'Book not found',
+                'message' => 'Null, no any matches',
             ], 404);
         }
-        return response()->json([
-            'message' => 'Book found',
-            'data' => $book,
-        ]);
+        return new BookResource($book)->additional(
+            [
+                'message' => 'book searched successfully',
+            ]
+        )->response()->setStatusCode(200);
     }
 
     public function store(Request $request)
@@ -54,10 +77,11 @@ class BookController extends Controller
 
         $book->save();
 
-        return response()->json([
-            'message' => 'Book created successfully',
-            'data' => $book
-        ]);
+        return new BookResource($book)->additional(
+            [
+                'message' => 'Book added successfully',
+            ]
+        )->response()->setStatusCode(201);
     }
 
     public function update(Request $request, $id)
@@ -88,10 +112,11 @@ class BookController extends Controller
 
         $book->save();
 
-        return response()->json([
-            'message' => 'Books updated successfully',
-            'data' => $book
-        ]);
+        return new BookResource($book)->additional(
+            [
+                'message' => 'book updated successfully',
+            ]
+        )->response()->setStatusCode(200);
     }
 
     public function destroy($id)
@@ -99,16 +124,40 @@ class BookController extends Controller
         $book = Book::find($id);
         if (!$book) {
             return response()->json([
-                'message'=> 'book not found',
+                'message' => 'book not found',
                 'id' => $id
-                ],404);
+            ], 404);
         }
-                
+
         $book->delete();
 
-        return response()->json([
-            'message' => 'book deleted successfully',
-            'data' => $book
-        ]);
+        return new BookResource($book)->additional(
+            [
+                'message' => 'Book deleted successfully',
+            ]
+        )->response()->setStatusCode(200);
+    }
+
+    public function expensiveBooks(Request $request){
+        $sort = $request->query('sort');
+        $order = $request->query('order');
+        $allowedSort = ['price', 'name','stock','author', 'id'];
+
+        if (!in_array($sort, $allowedSort)) {
+            $sort = 'price';
+        }
+        if(!in_array($order, ['asc', 'desc'])) {
+            $order = 'desc';
+        }
+
+        $query = Book::orderBy($sort, $order);
+        $query = $query->where('price', '>', '10000');
+        $book = $query->paginate(10);
+        
+        return BookResource::collection($book)->additional(
+            [
+                'message'=> 'Expensive book retrieved successfully',
+            ]
+        )->response()->setStatusCode(200);
     }
 }

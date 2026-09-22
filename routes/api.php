@@ -22,3 +22,4 @@ Route::post('/book', [BookController::class,'store']);
 Route::get('/book/{id}', [BookController::class,'search']);
 Route::put('/book/{id}', [BookController::class,'update']);
 Route::delete('/book/{id}', [BookController::class,'destroy']);
+Route::get('/expensive-books', [BookController::class,'expensiveBooks']);
